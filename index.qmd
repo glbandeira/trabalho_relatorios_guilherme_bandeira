@@ -1,0 +1,186 @@
+
+---
+title: "Penalidades Aplicadas"
+subtitle: "Corregedoria da Justiça - Coordenadoria do Foro Extrajudicial"
+date: "`{r} format(Sys.Date(), '%d/%m/%Y')`"
+date-format: short
+abstract: "Dados referentes às penalidades aplicadas contra agentes delegados e escreventes do foro extrajudicial para **1)** os últimos 12 meses e **2)** os últimos 5 anos."
+abstract-title: "*O que você vai encontrar neste relatório:*"
+toc: true
+toc-location: right
+toc-title: "Sumário"
+number-sections: false
+cap-location: margin
+page-layout: article
+title-block-style: plain
+fig-align: default
+lightbox: true
+link-external-newwindow: true
+highlight-style: pygments
+lang: pt-BR
+format:
+  html: 
+    theme: spacelab
+    code-fold: true
+    html-math-method: katex
+    df-print: kable
+warning: false
+# echo: false 
+---
+
+![](img/logo_cj.png)
+
+# Breve introdução
+
+A **Corregedoria da Justiça** exerce um papel fundamental na fiscalização das serventias do foro extrajudicial. Ela acompanha o funcionamento dos cartórios, verificando se os serviços são prestados com eficiência, regularidade e conforme as normas legais. Esse trabalho inclui o monitoramento de procedimentos, a análise de informações administrativas e a verificação da atuação dos responsáveis pelas serventias, tal como evidenciam as atividades de controle e alinhamento estratégico realizadas pela Coordenadoria do Foro Extrajudicial.
+
+Quando são identificadas irregularidades, a Corregedoria da Justiça pode aplicar penalidades como instrumento de correição. Essas medidas têm caráter educativo e disciplinar, buscando corrigir falhas, prevenir reincidências e assegurar que o serviço extrajudicial cumpra seu papel social. Assim, o sistema de fiscalização funciona como um mecanismo essencial para garantir transparência, segurança jurídica e confiança da população nos serviços prestados pelos cartórios, que estão submetidos ainda ao [**Código de Normas do Foro Extrajudicial**](https://www.tjpr.jus.br/codigo-de-normas-foro-extrajudicial).
+
+<br>
+
+::: {.callout-note}
+O presente relatório foi produzido de acordo com a [Lei Geral de Proteção de Dados (LGPD)](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13709compilado.htm).
+:::
+
+
+# Quais penalidades podem ser aplicadas?
+
+O sistema disciplinar dos agentes delegados é regido pelo [Código de Organização e Divisão Judiciárias (CODJ)](https://www.tjpr.jus.br/codj) e pela [Lei dos Cartórios (Lei nº 8.935/1994)](https://www.planalto.gov.br/ccivil_03/leis/l8935.htm), sendo possível a aplicação das seguintes penalidades:
+
+## Repreensão
+
+Aplicada em hipóteses de faltas leves, muitas vezes quando há regularização posterior do problema ou ausência de reincidência. Exemplos incluem falhas formais, atrasos pontuais ou inobservância de procedimentos.
+
+## Multa
+Imposta em casos de descumprimento de deveres funcionais, prática de atos irregulares ou violação de dispositivos normativos, inclusive os arts. 192 e 193 do CODJ. As multas são comuns quando há prejuízo ao serviço, descumprimento de prazos, omissão de informações obrigatórias ou falhas reiteradas.
+
+## Suspensão
+
+Utilizada quando as infrações são mais graves ou há reincidência. Pode ocorrer, por exemplo, diante de violação de deveres legais relevantes, negligência administrativa séria ou descumprimento reiterado de normas da Corregedoria.
+
+## Perda de delegação
+
+É a sanção mais grave aplicável a um agente delegado. Sua aplicação pode acontecer quando há:
+
+- **Falta grave** que comprometa a moralidade, eficiência ou regularidade do serviço;
+
+- **Reincidência em infrações**, especialmente quando o delegado demonstra incapacidade ou recusa em corrigir condutas;
+
+- **Conduta dolosa ou fraudulenta**, como falsificação de documentos, apropriação indevida de valores ou violação intencional da lei;
+
+- **Desídia extrema**, negligência prolongada ou descumprimento reiterado de deveres legais e regulamentares.
+
+
+# Penalidades aplicadas nos últimos 12 meses
+
+
+```{r}
+#| label: fig-12m
+#| fig-cap: "Penalidades aplicadas nos últimos 12 meses"
+
+library(lubridate)
+library(ggplot2)
+
+
+hj <- base::Sys.Date()
+
+df <- readxl::read_xls('dados/Relatório Hércules.xls')
+
+df <- df |> janitor::clean_names()
+
+df <- df |> 
+  dplyr::filter(tipo_processo %in% c('Sindicância', 'Processo Administrativo Disciplinar'),
+                cargo %in% c('Agente Delegado', 'Escrevente', NA)) |>
+  dplyr::mutate(transito_julgado = base::as.Date(transito_julgado, format = '%Y-%m-%d'),
+                data_da_assinatura = as_date(data_da_assinatura, format = '%d/%m/%Y'),
+                data_inicial = as_date(data_inicial, format = '%d/%m/%Y'),
+                data_final = as_date(data_final, format = '%d/%m/%Y'),
+                tipo_do_efeito = dplyr::recode(tipo_do_efeito,
+                                               "Quebra de Confiança Configurada - Impedimento por 5 Anos" = "Quebra confiança Imped 5a",
+                                               "Afastamento Cautelar do cargo ou função pública" = "Afastamento Cautelar"))
+
+
+df_penalidades <- df |> 
+  dplyr::filter(!tipo_do_efeito %in% c('Arquivamento', 'Instaurar PAD', 'Repreensão', NA))
+
+df_penalidades_ytd <- df_penalidades |> 
+  dplyr::filter(year(transito_julgado) == year(hj))
+
+df_penalidades_12m <- df_penalidades |> 
+  dplyr::filter(transito_julgado >= hj %m-% base::months(12))
+
+df_penalidades_5a <- df_penalidades |> 
+  dplyr::filter(transito_julgado >= hj %m-% years(5))
+
+
+grafico_12m <- ggplot(df_penalidades_12m, aes(x=forcats::fct_rev(tipo_do_efeito), fill=cargo)) +
+  geom_bar(position = position_stack(reverse = TRUE)) +
+  ggtitle('Penalidades aplicadas nos últimos 12 meses',
+          subtitle = base::paste(format(hj %m-% base::months(12), '%d/%m/%Y'),'-', format(hj, '%d/%m/%Y'))) +
+  ylab('número de penalidades') +
+  xlab('tipo de penalidade') +
+  theme_minimal() +
+  scale_fill_manual(values=c('#002a3a','#008c95','#49c5b1','#eeb134','#eb553b')) +
+  theme(legend.title = element_blank()) +
+  coord_flip()
+
+#ggsave('img/penalidades_12m.png', grafico_12m)
+
+grafico_12m
+```
+
+
+```{r}
+#| label: df-12m
+
+df_penalidades_12m |>
+  dplyr::group_by(tipo_do_efeito) |>
+  dplyr::summarise(quantidade = dplyr::n(), ) |> 
+  dplyr::rename(penalidade = tipo_do_efeito) |> 
+  dplyr::arrange(desc(quantidade))
+```
+
+<br>
+Dos registros da Coordenadoria do Foro Extrajudicial (Sistema Hércules - Módulo Processo-Decisão) constou, portanto, a aplicação de `{r} base::nrow(df_penalidades_12m)` penalidades nos últimos 12 meses (período de `{r} format(hj %m-% base::months(12), '%d/%m/%Y')` a `{r} format(hj, '%d/%m/%Y')`).
+
+
+# Penalidades aplicadas nos últimos 5 anos
+
+Já nos últimos 5 anos (período de `{r} format(hj %m-% years(5), '%d/%m/%Y')` a `{r} format(hj, '%d/%m/%Y')`) foram aplicadas `{r} base::nrow(df_penalidades_5a)` penalidades, perfazendo uma média de `{r} base::nrow(df_penalidades_5a)/5` penalidades por ano.
+
+```{r}
+#| label: fig-5a
+#| fig-cap: "Penalidades aplicadas nos últimos 5 anos"
+
+grafico_5a <- ggplot(df_penalidades_5a, aes(x=forcats::fct_rev(tipo_do_efeito), fill=cargo)) +
+  geom_bar(position = position_stack(reverse = TRUE)) +
+  ggtitle('Penalidades aplicadas nos últimos 5 anos',
+          subtitle = base::paste(format(hj %m-% years(5), '%d/%m/%Y'),'-', format(hj, '%d/%m/%Y'))) +
+  ylab('número de penalidades') +
+  xlab('tipo de penalidade') +
+  theme_minimal() +
+  scale_fill_manual(values=c('#002a3a','#008c95','#49c5b1','#eeb134','#eb553b')) +
+  theme(legend.title = element_blank()) +
+  coord_flip()
+
+#ggsave('img/penalidades_5a.png', grafico_5a)
+
+grafico_5a
+```
+
+
+```{r}
+#| label: df-5a
+
+df_penalidades_5a |>
+  dplyr::group_by(tipo_do_efeito) |>
+  dplyr::summarise(quantidade = dplyr::n(), 'média anual' = quantidade/5) |> 
+  dplyr::rename(penalidade = tipo_do_efeito) |> 
+  dplyr::arrange(desc(quantidade))
+```
+
+
+<br><br><br>
+*Este relatório foi feito com [**Quarto**](https://quarto.org/)!*
+
+*Use [**R**](https://www.r-project.org/about.html)!*
