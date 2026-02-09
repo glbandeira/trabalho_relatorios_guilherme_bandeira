@@ -28,6 +28,8 @@ warning: false
 # echo: false 
 ---
 
+<br><br>
+
 ![](img/logo_cj.png)
 
 # Breve introdução
@@ -84,6 +86,8 @@ library(ggplot2)
 
 hj <- base::Sys.Date()
 
+tj_palette <- c('#002a3a','#008c95','#49c5b1','#eeb134','#eb553b')
+
 df <- readxl::read_xls('dados/Relatório Hércules.xls')
 
 df <- df |> janitor::clean_names()
@@ -91,17 +95,18 @@ df <- df |> janitor::clean_names()
 df <- df |> 
   dplyr::filter(tipo_processo %in% c('Sindicância', 'Processo Administrativo Disciplinar'),
                 cargo %in% c('Agente Delegado', 'Escrevente', NA)) |>
-  dplyr::mutate(transito_julgado = base::as.Date(transito_julgado, format = '%Y-%m-%d'),
+  dplyr::mutate(tipo_do_efeito = stringr::str_to_sentence(tipo_do_efeito),
+                transito_julgado = base::as.Date(transito_julgado, format = '%Y-%m-%d'),
                 data_da_assinatura = as_date(data_da_assinatura, format = '%d/%m/%Y'),
                 data_inicial = as_date(data_inicial, format = '%d/%m/%Y'),
                 data_final = as_date(data_final, format = '%d/%m/%Y'),
                 tipo_do_efeito = dplyr::recode(tipo_do_efeito,
-                                               "Quebra de Confiança Configurada - Impedimento por 5 Anos" = "Quebra confiança Imped 5a",
-                                               "Afastamento Cautelar do cargo ou função pública" = "Afastamento Cautelar"))
+                                               "Afastamento cautelar do cargo ou função pública" = "Afastamento cautelar",
+                                               "Quebra de confiança configurada - impedimento por 5 anos" = "Quebra de confiança (imped 5a)"))
 
 
 df_penalidades <- df |> 
-  dplyr::filter(!tipo_do_efeito %in% c('Arquivamento', 'Instaurar PAD', 'Repreensão', NA))
+  dplyr::filter(!tipo_do_efeito %in% c('Arquivamento', 'Instaurar pad', 'Reconhecimento da prescrição', NA))
 
 df_penalidades_ytd <- df_penalidades |> 
   dplyr::filter(year(transito_julgado) == year(hj))
@@ -120,7 +125,7 @@ grafico_12m <- ggplot(df_penalidades_12m, aes(x=forcats::fct_rev(tipo_do_efeito)
   ylab('número de penalidades') +
   xlab('tipo de penalidade') +
   theme_minimal() +
-  scale_fill_manual(values=c('#002a3a','#008c95','#49c5b1','#eeb134','#eb553b')) +
+  scale_fill_manual(values=tj_palette) +
   theme(legend.title = element_blank()) +
   coord_flip()
 
@@ -159,7 +164,7 @@ grafico_5a <- ggplot(df_penalidades_5a, aes(x=forcats::fct_rev(tipo_do_efeito), 
   ylab('número de penalidades') +
   xlab('tipo de penalidade') +
   theme_minimal() +
-  scale_fill_manual(values=c('#002a3a','#008c95','#49c5b1','#eeb134','#eb553b')) +
+  scale_fill_manual(values=tj_palette) +
   theme(legend.title = element_blank()) +
   coord_flip()
 
